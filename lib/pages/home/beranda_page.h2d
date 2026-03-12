@@ -1,0 +1,96 @@
+import 'package:flutter/material.dart';
+import 'package:iot_ui_challenge/pages/home/halaman_dashboard.dart';
+import 'package:iot_ui_challenge/pages/home/halaman_monitoring.dart';
+import 'package:iot_ui_challenge/pages/home/halaman_history.dart';
+import 'package:iot_ui_challenge/pages/home/halaman_pengaturan.dart';
+import 'package:iot_ui_challenge/pages/home/halaman_feed_control.dart';
+
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  int _selectedIndex = 0;
+  String? _selectedHistoryNotificationId = 'auto_feed';
+
+  void _gantiTab(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  void _bukaMonitoring() {
+    _gantiTab(1);
+  }
+
+  void _bukaHistoryDenganNotifikasi(String id) {
+    setState(() {
+      _selectedHistoryNotificationId = id;
+      _selectedIndex = 2;
+    });
+  }
+
+  void _pilihNotifikasiHistory(String id) {
+    setState(() {
+      _selectedHistoryNotificationId = id;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FB),
+      body: SafeArea(
+        child: IndexedStack(
+          index: _selectedIndex,
+          children: [
+            HalamanDashboard(
+              onBukaMonitoring: _bukaMonitoring,
+              onBukaHistoryDenganNotifikasi: _bukaHistoryDenganNotifikasi,
+            ),
+            const HalamanMonitoring(),
+            HalamanHistory(
+              selectedNotificationId: _selectedHistoryNotificationId,
+              onNotificationTap: _pilihNotifikasiHistory,
+            ),
+            const HalamanPengaturan(),
+            const HalamanFeedControl(),
+          ],
+        ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: const Color(0xFF16A34A),
+        unselectedItemColor: Colors.grey,
+        onTap: _gantiTab,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard_outlined),
+            label: 'Dashboard',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.remove_red_eye_outlined),
+            label: 'Monitoring',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.analytics_outlined),
+            label: 'History',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_outlined),
+            label: 'Pengaturan',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.restaurant_menu_outlined),
+            label: 'Feed Control',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
