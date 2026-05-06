@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:iot_ui_challenge/utils/sensor_provider.dart';
+import 'manual.dart';
 
 class HalamanDashboard extends StatelessWidget {
   final VoidCallback onBukaMonitoring;
   final void Function(String id) onBukaNotifikasiDenganId;
   final VoidCallback onBukaHalamanNotifikasi;
+  final VoidCallback onBukaHalamanMitra;
 
   const HalamanDashboard({
     super.key,
     required this.onBukaMonitoring,
     required this.onBukaNotifikasiDenganId,
     required this.onBukaHalamanNotifikasi,
+    required this.onBukaHalamanMitra,
   });
 
   @override
   Widget build(BuildContext context) {
+    final sensor = context.watch<SensorProvider>();
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -23,11 +29,16 @@ class HalamanDashboard extends StatelessWidget {
           const SizedBox(height: 16),
           _buildSystemStatusCard(),
           const SizedBox(height: 12),
-          _buildStorageRow(),
+          _buildStorageRow(
+            levelPakanPersen: sensor.levelPakanPersen,
+            levelAirPersen: sensor.levelAirPersen,
+          ),
           const SizedBox(height: 12),
-          _buildAiSummaryCard(),
+          _buildAiSummaryCard(context),
           const SizedBox(height: 12),
-          _buildRecentAlertsCard(),
+          _buildMitraInfoCard(),
+          const SizedBox(height: 12),
+          // _buildRecentAlertsCard(),
         ],
       ),
     );
@@ -111,93 +122,138 @@ class HalamanDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildStorageRow() {
-    return Row(
-      children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: onBukaMonitoring,
-            child: _baseCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Level Pakan',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _miniStatChip(
-                        icon: Icons.inventory_2_outlined,
-                        label: 'Kondisi',
-                        value: 'Baik',
-                        color: const Color(0xFF16A34A),
-                      ),
-                      const SizedBox(width: 6),
-                      _miniStatChip(
-                        icon: Icons.percent,
-                        label: 'Level',
-                        value: '75%',
-                        color: const Color(0xFF0EA5E9),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: GestureDetector(
-            onTap: onBukaMonitoring,
-            child: _baseCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Level Air',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _miniStatChip(
-                        icon: Icons.water_drop_outlined,
-                        label: 'Kondisi',
-                        value: 'Sedang',
-                        color: const Color(0xFFF97316),
-                      ),
-                      const SizedBox(width: 6),
-                      _miniStatChip(
-                        icon: Icons.percent,
-                        label: 'Level',
-                        value: '45%',
-                        color: const Color(0xFF0EA5E9),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _buildStorageRow({
+      required double levelPakanPersen, 
+      required double levelAirPersen
+    }) {
+      // Logika Kondisi (Sinkron dengan ambang batas Halaman Monitoring)
+      final bool pakanAman = levelPakanPersen > 20.0;
+      final bool airAman = levelAirPersen > 20.0;
 
-  Widget _buildAiSummaryCard() {
+      return Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: onBukaMonitoring,
+              child: _baseCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Level Pakan', // Disingkat agar padat
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+
+                        _miniStatChip(
+                          icon: Icons.inventory_2_outlined,
+                          label: 'Kondisi',
+                          value: pakanAman ? 'Aman' : 'Kritis',
+                          color: pakanAman ? const Color(0xFF16A34A) : Colors.red,
+                        ),
+
+                        const SizedBox(width: 6),
+
+                        _miniStatChip(
+                          icon: Icons.percent,
+                          label: 'Level',
+                          value: '${levelPakanPersen.toStringAsFixed(0)}%',
+                          color: const Color(0xFF0EA5E9),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: GestureDetector(
+              onTap: onBukaMonitoring,
+              child: _baseCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Air', // Disingkat agar padat
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+
+                        _miniStatChip(
+                          icon: Icons.water_drop_outlined,
+                          label: 'Kondisi',
+                          value: airAman?'Aman' : 'Kritis',
+                          color: airAman ? const Color(0xFF16A34A) : Colors.red,
+                        ),
+
+                        const SizedBox(width: 6),
+
+                        _miniStatChip(
+                          icon: Icons.percent,
+                          label: 'Level',
+                          value: '${levelAirPersen.toStringAsFixed(0)}%',
+                          color: const Color(0xFF0EA5E9),
+                        ),
+
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+Widget _buildAiSummaryCard(BuildContext context) { // Pastikan context tersedia untuk Navigator
     return GestureDetector(
       onTap: () => onBukaNotifikasiDenganId('ai_24'),
       child: _baseCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Ringkasan Deteksi AI',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            // Perubahan dimulai di sini: Menggunakan Row untuk memisahkan Judul dan Tombol
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Ringkasan Deteksi AI',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ManualTelemetryPage(),
+                      ),
+                    );
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                    child: Text(
+                      'Manual Debug',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red, // Gunakan warna merah sebagai penanda ini bukan fitur untuk User
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
+            // Perubahan selesai
             const SizedBox(height: 12),
             Row(
               children: [
@@ -226,67 +282,111 @@ class HalamanDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildRecentAlertsCard() {
-    return _baseCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Notifikasi Terbaru',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 12),
-          GestureDetector(
-            onTap: () => onBukaNotifikasiDenganId('auto_feed'),
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE0F2FE),
-                borderRadius: BorderRadius.circular(12),
+  // Widget _buildRecentAlertsCard() {
+  //   return _baseCard(
+  //     child: Column(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         const Text(
+  //           'Notifikasi Terbaru',
+  //           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+  //         ),
+  //         const SizedBox(height: 12),
+  //         GestureDetector(
+  //           onTap: () => onBukaNotifikasiDenganId('auto_feed'),
+  //           child: Container(
+  //             padding: const EdgeInsets.all(10),
+  //             decoration: BoxDecoration(
+  //               color: const Color(0xFFE0F2FE),
+  //               borderRadius: BorderRadius.circular(12),
+  //             ),
+  //             child: Row(
+  //               children: const [
+  //                 Icon(
+  //                   Icons.notifications_active_outlined,
+  //                   color: Color(0xFF0284C7),
+  //                   size: 20,
+  //                 ),
+  //                 SizedBox(width: 8),
+  //                 Expanded(
+  //                   child: Text(
+  //                     'Pakan otomatis berhasil diberikan. Tekan untuk lihat history.',
+  //                     style: TextStyle(fontSize: 11, color: Colors.black87),
+  //                   ),
+  //                 ),
+  //               ],
+  //             ),
+  //           ),
+  //         ),
+  //         const SizedBox(height: 12),
+  //         _alertTile(
+  //           icon: Icons.check_circle_outline,
+  //           iconColor: const Color(0xFF16A34A),
+  //           title: 'Pakan otomatis berhasil diberikan',
+  //           subtitle: '10 menit yang lalu',
+  //           onTap: () => onBukaNotifikasiDenganId('auto_feed'),
+  //         ),
+  //         const SizedBox(height: 10),
+  //         _alertTile(
+  //           icon: Icons.warning_amber_outlined,
+  //           iconColor: const Color(0xFFF97316),
+  //           title: 'Level air hampir habis - segera isi ulang',
+  //           subtitle: '1 jam yang lalu',
+  //           onTap: () => onBukaNotifikasiDenganId('low_water'),
+  //         ),
+  //         const SizedBox(height: 10),
+  //         _alertTile(
+  //           icon: Icons.visibility_outlined,
+  //           iconColor: const Color(0xFF0EA5E9),
+  //           title: 'Deteksi AI aktif - 24 ayam terdeteksi',
+  //           subtitle: '2 jam yang lalu',
+  //           onTap: () => onBukaNotifikasiDenganId('ai_24'),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
+
+  Widget _buildMitraInfoCard() {
+    return GestureDetector(
+      onTap: onBukaHalamanMitra,
+      child: _baseCard(
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.asset(
+                'assets/images/BinaInsaniii.jpeg',
+                width: 54,
+                height: 54,
+                fit: BoxFit.cover,
               ),
-              child: Row(
-                children: const [
-                  Icon(
-                    Icons.notifications_active_outlined,
-                    color: Color(0xFF0284C7),
-                    size: 20,
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Informasi Mitra',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                   ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Pakan otomatis berhasil diberikan. Tekan untuk lihat history.',
-                      style: TextStyle(fontSize: 11, color: Colors.black87),
-                    ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Kelompok Tani Ternak Bina Insani',
+                    style: TextStyle(fontSize: 12, color: Colors.black87),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Lihat profil, alamat, dan informasi kemitraan',
+                    style: TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          _alertTile(
-            icon: Icons.check_circle_outline,
-            iconColor: const Color(0xFF16A34A),
-            title: 'Pakan otomatis berhasil diberikan',
-            subtitle: '10 menit yang lalu',
-            onTap: () => onBukaNotifikasiDenganId('auto_feed'),
-          ),
-          const SizedBox(height: 10),
-          _alertTile(
-            icon: Icons.warning_amber_outlined,
-            iconColor: const Color(0xFFF97316),
-            title: 'Level air hampir habis - segera isi ulang',
-            subtitle: '1 jam yang lalu',
-            onTap: () => onBukaNotifikasiDenganId('low_water'),
-          ),
-          const SizedBox(height: 10),
-          _alertTile(
-            icon: Icons.visibility_outlined,
-            iconColor: const Color(0xFF0EA5E9),
-            title: 'Deteksi AI aktif - 24 ayam terdeteksi',
-            subtitle: '2 jam yang lalu',
-            onTap: () => onBukaNotifikasiDenganId('ai_24'),
-          ),
-        ],
+            const Icon(Icons.chevron_right, color: Colors.grey),
+          ],
+        ),
       ),
     );
   }

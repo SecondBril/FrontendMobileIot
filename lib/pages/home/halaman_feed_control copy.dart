@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../service/jadwal_api.dart'; // Import service yang dibuat
 
 class HalamanFeedControl extends StatefulWidget {
   final VoidCallback onBukaHalamanNotifikasi;
@@ -16,35 +15,12 @@ class HalamanFeedControl extends StatefulWidget {
 
 class _HalamanFeedControlState extends State<HalamanFeedControl> {
   bool _enableAutoFeeding = true;
-  bool _isLoading = true;
-  List<dynamic> _feedingSlots = []; // Data sekarang kosong, akan diisi dari API
-
-  @override
-  void initState() {
-    super.initState();
-    _loadDataJadwal(); // Panggil API saat halaman pertama kali dibuka
-  }
-
-  // Fungsi untuk menarik data dari Backend
-  Future<void> _loadDataJadwal() async {
-    setState(() => _isLoading = true);
-    try {
-      final data = await JadwalApiService.fetchJadwal();
-      setState(() {
-        _feedingSlots = data;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-      _showSnackBar('Gagal memuat jadwal dari server.');
-    }
-  }
-
-  void _showSnackBar(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-    }
-  }
+  final List<Map<String, dynamic>> _feedingSlots = [
+    {'time': '06:00', 'portion': '500', 'enabled': true},
+    {'time': '12:00', 'portion': '600', 'enabled': true},
+    {'time': '18:00', 'portion': '500', 'enabled': true},
+    {'time': '21:00', 'portion': '400', 'enabled': false},
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -57,16 +33,11 @@ class _HalamanFeedControlState extends State<HalamanFeedControl> {
           const SizedBox(height: 16),
           _buildCurrentStatusCard(),
           const SizedBox(height: 12),
-          // Tampilkan loading spinner jika data sedang ditarik
-          _isLoading 
-              ? const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
-              : _buildAutomaticFeedingCard(),
+          _buildAutomaticFeedingCard(),
         ],
       ),
     );
   }
-
-  // ... (Widget _buildTopBar dan _buildCurrentStatusCard tetap SAMA persis seperti kode Anda) ...
 
   Widget _buildTopBar() {
     return Container(
@@ -147,7 +118,7 @@ class _HalamanFeedControlState extends State<HalamanFeedControl> {
   }
 
   Widget _buildAutomaticFeedingCard() {
-    final activeCount = _feedingSlots.where((s) => s['is_active'] == true).length;
+    final activeCount = _feedingSlots.where((s) => s['enabled'] == true).length;
 
     return _baseCard(
       child: Column(
@@ -155,11 +126,15 @@ class _HalamanFeedControlState extends State<HalamanFeedControl> {
         children: [
           Row(
             children: const [
-              Icon(Icons.calendar_today_outlined, size: 18, color: Color(0xFF16A34A)),
+              Icon(Icons.calendar_today_outlined,
+                  size: 18, color: Color(0xFF16A34A)),
               SizedBox(width: 8),
               Text(
                 'Pakan Otomatis',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -167,7 +142,8 @@ class _HalamanFeedControlState extends State<HalamanFeedControl> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Aktifkan Pakan Otomatis', style: TextStyle(fontSize: 14)),
+              const Text('Aktifkan Pakan Otomatis',
+                  style: TextStyle(fontSize: 14)),
               Switch(
                 value: _enableAutoFeeding,
                 onChanged: (v) => setState(() => _enableAutoFeeding = v),
@@ -175,27 +151,27 @@ class _HalamanFeedControlState extends State<HalamanFeedControl> {
               ),
             ],
           ),
-          Text('$activeCount slot aktif', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          Text('$activeCount slot aktif',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600])),
           const SizedBox(height: 12),
-          
-          // MAP DATA DARI API
           ..._feedingSlots.asMap().entries.map((entry) {
+            final i = entry.key;
             final slot = entry.value;
-            final jadwalId = slot['id']; // Ambil ID asli dari database
-            final enabled = slot['is_active'] as bool;
-            
+            final enabled = slot['enabled'] as bool;
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: enabled ? const Color(0xFFD1FAE5).withOpacity(0.5) : Colors.grey.shade100,
+                  color: enabled
+                      ? const Color(0xFFD1FAE5).withOpacity(0.5)
+                      : Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
                     Text(
-                      '${slot['waktu']}', // Map ke 'waktu' dari API
+                      '${slot['time']}',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -204,45 +180,30 @@ class _HalamanFeedControlState extends State<HalamanFeedControl> {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      '${slot['porsi_gram']}g', // Map ke 'porsi_gram' dari API
+                      '${slot['portion']}g',
                       style: TextStyle(
                         fontSize: 13,
                         color: enabled ? Colors.black87 : Colors.grey,
                       ),
                     ),
                     const Spacer(),
-                    
-                    // TOMBOL DELETE MENGGUNAKAN API
                     IconButton(
-                      icon: Icon(Icons.delete_outline, size: 22, color: Colors.red[400]),
-                      onPressed: () async {
-                        // Tampilkan loading indikator di UI opsional, atau langsung hajar
-                        bool success = await JadwalApiService.deleteJadwal(jadwalId);
-                        if (success) {
-                          _loadDataJadwal(); // Reload data setelah sukses dihapus
-                        } else {
-                          _showSnackBar('Gagal menghapus jadwal');
-                        }
+                      icon: Icon(Icons.delete_outline,
+                          size: 22, color: Colors.red[400]),
+                      onPressed: () {
+                        setState(() {
+                          _feedingSlots.removeAt(i);
+                        });
                       },
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                      constraints:
+                          const BoxConstraints(minWidth: 36, minHeight: 36),
                     ),
-                    
-                    // SWITCH TOGGLE MENGGUNAKAN API
                     Switch(
                       value: enabled,
-                      onChanged: (v) async {
-                        // Optimistic UI Update (Ubah UI dulu biar responsif)
-                        setState(() => slot['is_active'] = v); 
-                        
-                        // Eksekusi di backend
-                        bool success = await JadwalApiService.toggleJadwal(jadwalId, v);
-                        if (!success) {
-                          // Jika API gagal, kembalikan posisi switch seperti semula
-                          setState(() => slot['is_active'] = !v);
-                          _showSnackBar('Gagal mengubah status jadwal');
-                        }
-                      },
+                      onChanged: (v) => setState(() {
+                        _feedingSlots[i]['enabled'] = v;
+                      }),
                       activeColor: const Color(0xFF16A34A),
                     ),
                   ],
@@ -259,7 +220,8 @@ class _HalamanFeedControlState extends State<HalamanFeedControl> {
               foregroundColor: const Color(0xFF16A34A),
               side: const BorderSide(color: Color(0xFF16A34A)),
               minimumSize: const Size(double.infinity, 44),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
           ),
         ],
@@ -364,27 +326,18 @@ class _HalamanFeedControlState extends State<HalamanFeedControl> {
 
     portionController.dispose();
 
-
     if (result != null && mounted) {
-      final waktu = result['time']!;
-      final porsi = int.parse(result['portion']!);
-      
-      // Tampilkan indikator loading (bisa pakai dialog overlay)
-      setState(() => _isLoading = true);
-      
-      // TEMBAK KE API
-      bool success = await JadwalApiService.createJadwal(waktu, porsi);
-      
-      if (success) {
-        _loadDataJadwal(); // Tarik ulang data terbaru dari server agar ID tersetting dengan benar
-      } else {
-        setState(() => _isLoading = false);
-        _showSnackBar('Gagal menambahkan jadwal. Cek koneksi atau pastikan jam tidak duplikat.');
-      }
+      setState(() {
+        _feedingSlots.add({
+          'time': result['time'] ?? '12:00',
+          'portion': result['portion'] ?? '500',
+          'enabled': true,
+        });
+      });
     }
   }
 
-Widget _baseCard({required Widget child}) {
+  Widget _baseCard({required Widget child}) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -402,3 +355,4 @@ Widget _baseCard({required Widget child}) {
     );
   }
 }
+

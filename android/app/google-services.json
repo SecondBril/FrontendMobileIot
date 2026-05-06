@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "676282203129",
+    "firebase_url": "https://opet-penguasa-lautan-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "opet-penguasa-lautan",
+    "storage_bucket": "opet-penguasa-lautan.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:676282203129:android:b2be77a9e43fd38ca0db28",
+        "android_client_info": {
+          "package_name": "com.example.iot_ui_challenge"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDYsCw0y0hmklwfhOm5eEIUXh8iLOw-IMs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -5,6 +5,11 @@ import 'package:iot_ui_challenge/pages/home/halaman_notifikasi.dart';
 import 'package:iot_ui_challenge/pages/home/halaman_history_pakan.dart';
 import 'package:iot_ui_challenge/pages/home/halaman_pengaturan.dart';
 import 'package:iot_ui_challenge/pages/home/halaman_feed_control.dart';
+import 'package:iot_ui_challenge/pages/home/halaman_mitra.dart';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:provider/provider.dart';
+import 'package:iot_ui_challenge/utils/notification_provider.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -13,10 +18,12 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
+
+
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0; // index bottom nav
   int _activePageIndex = 0; // index halaman di IndexedStack (termasuk notifikasi)
-  String? _selectedNotificationId = 'auto_feed';
+  // String? _selectedNotificationId = 'auto_feed';
   int _previousPageIndex = 0;
 
   void _gantiTab(int index) {
@@ -26,13 +33,26 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  @override
+  void initState() {
+    super.initState();
+    
+    // TANGKAP NOTIFIKASI SAAT APLIKASI TERBUKA
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      if (message.notification != null) {
+        // Simpan ke dalam Provider
+        context.read<NotificationProvider>().addMessage(message);
+      }
+    });
+  }
+
   void _bukaMonitoring() {
     _gantiTab(1);
   }
 
   void _bukaNotifikasiDenganId(String id) {
     setState(() {
-      _selectedNotificationId = id;
+      // _selectedNotificationId = id;
       _previousPageIndex = _activePageIndex;
       _activePageIndex = 4; // halaman notifikasi (di luar bottom nav)
     });
@@ -52,11 +72,18 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _pilihNotifikasi(String id) {
+  void _bukaHalamanMitra() {
     setState(() {
-      _selectedNotificationId = id;
+      _previousPageIndex = _activePageIndex;
+      _activePageIndex = 6;
     });
   }
+
+  // void _pilihNotifikasi(String id) {
+  //   setState(() {
+  //     _selectedNotificationId = id;
+  //   });
+  // }
 
   void _kembaliKeSebelumnya() {
     setState(() {
@@ -79,6 +106,7 @@ class _HomePageState extends State<HomePage> {
               onBukaMonitoring: _bukaMonitoring,
               onBukaNotifikasiDenganId: _bukaNotifikasiDenganId,
               onBukaHalamanNotifikasi: _bukaHalamanNotifikasi,
+              onBukaHalamanMitra: _bukaHalamanMitra,
             ),
             HalamanMonitoring(
               onBukaHalamanNotifikasi: _bukaHalamanNotifikasi,
@@ -91,11 +119,14 @@ class _HomePageState extends State<HomePage> {
               onBukaHalamanNotifikasi: _bukaHalamanNotifikasi,
             ),
             HalamanNotifikasi(
-              selectedNotificationId: _selectedNotificationId,
-              onNotificationTap: _pilihNotifikasi,
+              // selectedNotificationId: _selectedNotificationId,
+              // onNotificationTap: _pilihNotifikasi,
               onBack: _kembaliKeSebelumnya,
             ),
             HalamanHistoryPakan(
+              onBack: _kembaliKeSebelumnya,
+            ),
+            HalamanMitra(
               onBack: _kembaliKeSebelumnya,
             ),
           ],
