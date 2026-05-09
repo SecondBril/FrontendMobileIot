@@ -8,6 +8,7 @@ class HalamanDashboard extends StatelessWidget {
   final void Function(String id) onBukaNotifikasiDenganId;
   final VoidCallback onBukaHalamanNotifikasi;
   final VoidCallback onBukaHalamanMitra;
+  final VoidCallback onBukaDashboardMonitoring;
 
   const HalamanDashboard({
     super.key,
@@ -15,7 +16,10 @@ class HalamanDashboard extends StatelessWidget {
     required this.onBukaNotifikasiDenganId,
     required this.onBukaHalamanNotifikasi,
     required this.onBukaHalamanMitra,
+    required this.onBukaDashboardMonitoring,
   });
+
+  
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +40,8 @@ class HalamanDashboard extends StatelessWidget {
           const SizedBox(height: 12),
           _buildAiSummaryCard(context),
           const SizedBox(height: 12),
+          _buildMonitoringShortcutCard(),  // ← tambah ini
+          const SizedBox(height: 12),
           _buildMitraInfoCard(),
           const SizedBox(height: 12),
           // _buildRecentAlertsCard(),
@@ -43,6 +49,110 @@ class HalamanDashboard extends StatelessWidget {
       ),
     );
   }
+
+
+  Widget _buildMonitoringShortcutCard() {
+    return GestureDetector(
+      onTap: onBukaDashboardMonitoring,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF0F172A), Color(0xFF1E3A5F)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0F172A).withOpacity(0.18),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            // Ikon kiri
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.monitor_heart_rounded,
+                color: Colors.white,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            // Teks tengah
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Dashboard Monitoring',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    'Status robot & kesehatan perangkat',
+                    style: TextStyle(
+                      color: Colors.white60,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Badge + chevron
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF16A34A).withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFF16A34A).withOpacity(0.5),
+                      width: 1,
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.circle, size: 6, color: Color(0xFF4ADE80)),
+                      SizedBox(width: 4),
+                      Text(
+                        'Live',
+                        style: TextStyle(
+                          color: Color(0xFF4ADE80),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Icon(Icons.arrow_forward_ios_rounded,
+                    size: 14, color: Colors.white38),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   Widget _buildTopBar() {
     return Container(

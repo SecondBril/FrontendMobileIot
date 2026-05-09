@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:iot_ui_challenge/pages/home/halaman_dashboard.dart';
+import 'package:iot_ui_challenge/pages/home/halaman_dashboard_monitoring.dart';
 import 'package:iot_ui_challenge/pages/home/halaman_monitoring.dart';
 import 'package:iot_ui_challenge/pages/home/halaman_notifikasi.dart';
 import 'package:iot_ui_challenge/pages/home/halaman_history_pakan.dart';
@@ -107,6 +108,12 @@ class _HomePageState extends State<HomePage> {
               onBukaNotifikasiDenganId: _bukaNotifikasiDenganId,
               onBukaHalamanNotifikasi: _bukaHalamanNotifikasi,
               onBukaHalamanMitra: _bukaHalamanMitra,
+              onBukaDashboardMonitoring: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const HalamanDashboardMonitoring(),
+                ),
+              ),
             ),
             HalamanMonitoring(
               onBukaHalamanNotifikasi: _bukaHalamanNotifikasi,
