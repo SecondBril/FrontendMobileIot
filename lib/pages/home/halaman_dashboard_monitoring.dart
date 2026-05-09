@@ -1,13 +1,17 @@
 // ================================================================
-//  halaman_dashboard_monitoring.dart
+//  halaman_dashboard_monitoring.dart  [UPDATED]
 //
 //  Widget Dashboard Monitoring Terpusat
 //  Menampilkan dua card:
 //    1. Robot Feeder Status  — operasional robot di lapangan
 //    2. Monitoring Device Health — integritas hardware ESP32
 //
+//  ✅ UPDATE: Card Robot Feeder kini punya tombol
+//     "Detail Peripheral" yang membuka HalamanPeripheralMonitoring
+//     secara full-screen (Navigator.push).
+//
 //  Koneksi API:
-//    GET /api/{device_id}/status   → RobotStatusData
+//    GET /api/{device_id}/status            → RobotStatusData
 //    GET /api/monitoring-status/{device_id} → MonitoringHealthData
 //
 //  Refresh: polling setiap 10 detik (Timer.periodic)
@@ -18,21 +22,22 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../config/api_config.dart';
+import 'halaman_peripheral_monitoring.dart'; // ← import halaman baru
 
 // ── Konstanta ────────────────────────────────────────────────────
 const String kRobotId    = 'ROBOT-01';
 const String kMonitorId  = 'ESP32-Moniitoring';
-const double kPosisiMax  = 200.0; // cm — sesuaikan dengan panjang rel robot
-const int    kOfflineTtl = 60;    // detik — > ini tampilkan WARNING di robot
-const int    kErrorTtl   = 180;   // detik — > ini tampilkan OFFLINE di monitoring
+const double kPosisiMax  = 200.0;
+const int    kOfflineTtl = 60;
+const int    kErrorTtl   = 180;
 
-// ── Warna status (sesuai PRD §3) ─────────────────────────────────
-const _cHijau  = Color(0xFF16A34A);
-const _cKuning = Color(0xFFF59E0B);
-const _cMerah  = Color(0xFFEF4444);
-const _cAbu    = Color(0xFF9CA3AF);
+// ── Warna status ─────────────────────────────────────────────────
+const _cHijau   = Color(0xFF16A34A);
+const _cKuning  = Color(0xFFF59E0B);
+const _cMerah   = Color(0xFFEF4444);
+const _cAbu     = Color(0xFF9CA3AF);
 const _cSurface = Color(0xFFF8FAFC);
-const _cCard   = Colors.white;
+const _cCard    = Colors.white;
 
 // ================================================================
 //  MODEL — Robot
@@ -67,17 +72,17 @@ class RobotStatusData {
   });
 
   factory RobotStatusData.fromJson(Map<String, dynamic> j) => RobotStatusData(
-    deviceId:     j['device_id']        ?? kRobotId,
-    mode:         j['mode']             ?? 'IDLE',
-    jadwalAktif:  j['jadwal_aktif']     ?? '-',
-    posisiCm:     (j['posisi_cm']       ?? 0.0).toDouble(),
-    motorEnabled: j['motor_enabled']    ?? false,
-    limitMaju:    j['limit_maju']       ?? false,
-    limitMundur:  j['limit_mundur']     ?? false,
-    mechState:    j['mech_state']       ?? '-',
-    subAktivitas: j['sub_aktivitas']    ?? 'Tidak diketahui',
-    wifiOk:       j['wifi_ok']          ?? false,
-    rtcOk:        j['rtc_ok']           ?? false,
+    deviceId:     j['device_id']           ?? kRobotId,
+    mode:         j['mode']                ?? 'IDLE',
+    jadwalAktif:  j['jadwal_aktif']        ?? '-',
+    posisiCm:     (j['posisi_cm']          ?? 0.0).toDouble(),
+    motorEnabled: j['motor_enabled']       ?? false,
+    limitMaju:    j['limit_maju']          ?? false,
+    limitMundur:  j['limit_mundur']        ?? false,
+    mechState:    j['mech_state']          ?? '-',
+    subAktivitas: j['sub_aktivitas']       ?? 'Tidak diketahui',
+    wifiOk:       j['wifi_ok']             ?? false,
+    rtcOk:        j['rtc_ok']             ?? false,
     detikSejak:   (j['detik_sejak_lapor'] as num?)?.toDouble(),
   );
 }
@@ -89,15 +94,12 @@ class MonitoringHealthData {
   final String deviceId;
   final String deviceStatus;
   final int    detikSejak;
-  // infrastruktur
-  final bool wifiConnected;
-  final bool rtcOk;
-  final bool lcdOk;
-  // sensor
-  final bool sensorAirOk;
-  final bool sensorPakanOk;
-  final bool sensorPhOk;
-  // operasional
+  final bool   wifiConnected;
+  final bool   rtcOk;
+  final bool   lcdOk;
+  final bool   sensorAirOk;
+  final bool   sensorPakanOk;
+  final bool   sensorPhOk;
   final String uiState;
   final int    jadwalTersinkronisasi;
 
@@ -135,7 +137,7 @@ class MonitoringHealthData {
     );
   }
 
-  bool get semuaSensorOk => sensorAirOk && sensorPakanOk && sensorPhOk;
+  bool get semuaSensorOk   => sensorAirOk && sensorPakanOk && sensorPhOk;
   bool get semuaHardwareOk => rtcOk && lcdOk && wifiConnected;
 }
 
@@ -181,11 +183,11 @@ class HalamanDashboardMonitoring extends StatefulWidget {
 
 class _HalamanDashboardMonitoringState
     extends State<HalamanDashboardMonitoring> {
-  RobotStatusData?    _robot;
+  RobotStatusData?      _robot;
   MonitoringHealthData? _health;
-  bool _loading = true;
+  bool    _loading = true;
   String? _error;
-  Timer? _timer;
+  Timer?  _timer;
   DateTime? _lastRefresh;
 
   @override
@@ -300,13 +302,12 @@ class _HalamanDashboardMonitoringState
 }
 
 // ================================================================
-//  CARD 1 — Robot Feeder Status
+//  CARD 1 — Robot Feeder Status  [UPDATED: + tombol peripheral]
 // ================================================================
 class _CardRobotStatus extends StatelessWidget {
   final RobotStatusData? data;
   const _CardRobotStatus({this.data});
 
-  // Warna status badge mode
   Color _modeColor(String mode) => switch (mode) {
     'FEEDING' => _cHijau,
     'SCAN'    => _cKuning,
@@ -314,7 +315,6 @@ class _CardRobotStatus extends StatelessWidget {
     _         => _cAbu,
   };
 
-  // Teks mode dalam Bahasa Indonesia
   String _modeLabel(String mode) => switch (mode) {
     'FEEDING' => 'Memberi Pakan',
     'SCAN'    => 'Scanning Kandang',
@@ -322,11 +322,13 @@ class _CardRobotStatus extends StatelessWidget {
     _         => mode,
   };
 
-  // Status koneksi robot berdasarkan detikSejak
   ({Color warna, String label, IconData ikon}) _koneksiStatus(double? detik) {
-    if (detik == null) return (warna: _cAbu, label: 'Tidak Diketahui', ikon: Icons.help_outline_rounded);
-    if (detik < kOfflineTtl) return (warna: _cHijau, label: 'Online', ikon: Icons.wifi_rounded);
-    if (detik < kErrorTtl)   return (warna: _cKuning, label: 'Lambat', ikon: Icons.wifi_rounded);
+    if (detik == null)
+      return (warna: _cAbu, label: 'Tidak Diketahui', ikon: Icons.help_outline_rounded);
+    if (detik < kOfflineTtl)
+      return (warna: _cHijau, label: 'Online', ikon: Icons.wifi_rounded);
+    if (detik < kErrorTtl)
+      return (warna: _cKuning, label: 'Lambat', ikon: Icons.wifi_rounded);
     return (warna: _cMerah, label: 'Offline', ikon: Icons.wifi_off_rounded);
   }
 
@@ -334,17 +336,17 @@ class _CardRobotStatus extends StatelessWidget {
   Widget build(BuildContext context) {
     if (data == null) return _CardSkeleton(judul: 'Robot Feeder Status');
 
-    final mode    = data!.mode;
-    final modeClr = _modeColor(mode);
-    final koneksi = _koneksiStatus(data!.detikSejak);
+    final mode     = data!.mode;
+    final modeClr  = _modeColor(mode);
+    final koneksi  = _koneksiStatus(data!.detikSejak);
     final posisiPct = (data!.posisiCm / kPosisiMax).clamp(0.0, 1.0);
-    final isLimit = data!.limitMaju || data!.limitMundur;
+    final isLimit  = data!.limitMaju || data!.limitMundur;
 
     return _BaseCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ─────────────────────────────────────────────
+          // ── Header ──────────────────────────────────────────────
           Row(
             children: [
               Container(
@@ -370,12 +372,7 @@ class _CardRobotStatus extends StatelessWidget {
                   ],
                 ),
               ),
-              // Badge mode
-              _StatusBadge(
-                label: _modeLabel(mode),
-                color: modeClr,
-                dot: true,
-              ),
+              _StatusBadge(label: _modeLabel(mode), color: modeClr, dot: true),
             ],
           ),
 
@@ -412,18 +409,17 @@ class _CardRobotStatus extends StatelessWidget {
 
           // ── Visualizer Posisi ───────────────────────────────────
           _PosisiVisualizer(
-            posisiPct: posisiPct,
-            posisiCm: data!.posisiCm,
-            limitMaju: data!.limitMaju,
+            posisiPct:   posisiPct,
+            posisiCm:    data!.posisiCm,
+            limitMaju:   data!.limitMaju,
             limitMundur: data!.limitMundur,
           ),
 
           const SizedBox(height: 14),
 
-          // ── Status bawah ─────────────────────────────────────────
+          // ── Chip status (motor / limit / koneksi) ───────────────
           Row(
             children: [
-              // Motor
               Expanded(
                 child: _ChipStatus(
                   ikon: data!.motorEnabled
@@ -434,7 +430,6 @@ class _CardRobotStatus extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              // Limit
               if (isLimit)
                 Expanded(
                   child: _ChipStatus(
@@ -452,7 +447,6 @@ class _CardRobotStatus extends StatelessWidget {
                   ),
                 ),
               const SizedBox(width: 8),
-              // Koneksi
               Expanded(
                 child: _ChipStatus(
                   ikon: koneksi.ikon,
@@ -463,7 +457,7 @@ class _CardRobotStatus extends StatelessWidget {
             ],
           ),
 
-          // Mech state — kecil di bawah
+          // ── Mech state ──────────────────────────────────────────
           const SizedBox(height: 10),
           Row(children: [
             const Icon(Icons.settings_rounded, size: 13, color: _cAbu),
@@ -471,6 +465,47 @@ class _CardRobotStatus extends StatelessWidget {
             Text('State: ${data!.mechState}',
                 style: const TextStyle(fontSize: 11, color: _cAbu)),
           ]),
+
+          // ════════════════════════════════════════════════════════
+          //  ✅ TOMBOL AKSES PERIPHERAL (baru)
+          // ════════════════════════════════════════════════════════
+          const SizedBox(height: 14),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          const SizedBox(height: 12),
+
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              // Navigator.push ke HalamanPeripheralMonitoring
+              // dengan deviceId diambil langsung dari data robot
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => HalamanPeripheralMonitoring(
+                    deviceId: data!.deviceId, // → 'ROBOT-01'
+                  ),
+                ),
+              ),
+              icon: const Icon(
+                Icons.developer_board_rounded,
+                size: 16,
+              ),
+              label: const Text(
+                'Detail Peripheral',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF0EA5E9),
+                side: const BorderSide(
+                    color: Color(0xFF0EA5E9), width: 0.8),
+                padding: const EdgeInsets.symmetric(vertical: 11),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                backgroundColor: const Color(0xFF0EA5E9).withOpacity(0.04),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -478,14 +513,16 @@ class _CardRobotStatus extends StatelessWidget {
 }
 
 // ================================================================
-//  CARD 2 — Monitoring Device Health
+//  CARD 2 — Monitoring Device Health  (tidak berubah)
 // ================================================================
 class _CardMonitoringHealth extends StatelessWidget {
   final MonitoringHealthData? data;
   const _CardMonitoringHealth({this.data});
 
   ({Color warna, String label, IconData ikon}) _deviceStatus() {
-    if (data == null) return (warna: _cAbu, label: 'Tidak Diketahui', ikon: Icons.help_outline_rounded);
+    if (data == null)
+      return (warna: _cAbu, label: 'Tidak Diketahui',
+          ikon: Icons.help_outline_rounded);
     if (data!.deviceStatus == 'OFFLINE' || data!.detikSejak > kErrorTtl)
       return (warna: _cMerah, label: 'OFFLINE', ikon: Icons.sensors_off_rounded);
     if (!data!.semuaHardwareOk || !data!.semuaSensorOk)
@@ -494,7 +531,7 @@ class _CardMonitoringHealth extends StatelessWidget {
   }
 
   String _fmtDetik(int detik) {
-    if (detik < 60)  return '${detik}d lalu';
+    if (detik < 60)   return '${detik}d lalu';
     if (detik < 3600) return '${detik ~/ 60}m lalu';
     return '${detik ~/ 3600}j lalu';
   }
@@ -509,7 +546,7 @@ class _CardMonitoringHealth extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ─────────────────────────────────────────────
+          // ── Header ──────────────────────────────────────────────
           Row(
             children: [
               Container(
@@ -526,7 +563,8 @@ class _CardMonitoringHealth extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text('Monitoring Device',
-                        style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+                        style: TextStyle(fontSize: 13,
+                            color: Color(0xFF64748B))),
                     Text(data!.deviceId,
                         style: const TextStyle(
                             fontSize: 15, fontWeight: FontWeight.w700,
@@ -535,15 +573,11 @@ class _CardMonitoringHealth extends StatelessWidget {
                 ),
               ),
               _StatusBadge(
-                label: status.label,
-                color: status.warna,
-                dot: true,
-              ),
+                  label: status.label, color: status.warna, dot: true),
             ],
           ),
 
           const SizedBox(height: 4),
-          // Last heartbeat
           Row(children: [
             const SizedBox(width: 46),
             Icon(Icons.access_time_rounded, size: 12,
@@ -587,7 +621,6 @@ class _CardMonitoringHealth extends StatelessWidget {
               ok: data!.sensorPhOk,
               ikon: Icons.science_rounded,
             )),
-            // placeholder agar grid 2×2 simetris
             const SizedBox(width: 10),
             Expanded(child: _SensorTile(
               label: 'WiFi',
@@ -650,7 +683,7 @@ class _CardMonitoringHealth extends StatelessWidget {
 }
 
 // ================================================================
-//  WIDGET HELPERS
+//  WIDGET HELPERS  (sama persis dengan versi sebelumnya)
 // ================================================================
 
 class _BaseCard extends StatelessWidget {
@@ -675,12 +708,12 @@ class _BaseCard extends StatelessWidget {
   );
 }
 
-// ── Badge status (hijau/kuning/merah/abu + titik animasi) ─────────
 class _StatusBadge extends StatelessWidget {
   final String label;
   final Color  color;
   final bool   dot;
-  const _StatusBadge({required this.label, required this.color, this.dot = false});
+  const _StatusBadge(
+      {required this.label, required this.color, this.dot = false});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -708,7 +741,6 @@ class _StatusBadge extends StatelessWidget {
   );
 }
 
-// ── Tile info 2 baris (ikon + label kecil + nilai) ─────────────
 class _InfoTile extends StatelessWidget {
   final IconData ikon;
   final String   label;
@@ -734,7 +766,8 @@ class _InfoTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
-              style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
+              style: const TextStyle(fontSize: 10,
+                  color: Color(0xFF94A3B8))),
           Text(nilai,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -746,12 +779,12 @@ class _InfoTile extends StatelessWidget {
   );
 }
 
-// ── Chip status kecil (motor, limit, koneksi) ─────────────────
 class _ChipStatus extends StatelessWidget {
   final IconData ikon;
   final String   label;
   final Color    warna;
-  const _ChipStatus({required this.ikon, required this.label, required this.warna});
+  const _ChipStatus(
+      {required this.ikon, required this.label, required this.warna});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -775,12 +808,12 @@ class _ChipStatus extends StatelessWidget {
   );
 }
 
-// ── Tile sensor grid (label + ok/gagal) ──────────────────────
 class _SensorTile extends StatelessWidget {
   final String   label;
   final bool     ok;
   final IconData ikon;
-  const _SensorTile({required this.label, required this.ok, required this.ikon});
+  const _SensorTile(
+      {required this.label, required this.ok, required this.ikon});
 
   @override
   Widget build(BuildContext context) {
@@ -799,7 +832,8 @@ class _SensorTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(label,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                style: const TextStyle(fontSize: 11,
+                    color: Color(0xFF64748B))),
             const SizedBox(height: 2),
             Text(ok ? 'Normal' : 'GAGAL',
                 style: TextStyle(
@@ -815,12 +849,12 @@ class _SensorTile extends StatelessWidget {
   }
 }
 
-// ── Chip hardware diagnostic (LCD / RTC) ──────────────────────
 class _DiagnosticChip extends StatelessWidget {
   final String   label;
   final bool     ok;
   final IconData ikon;
-  const _DiagnosticChip({required this.label, required this.ok, required this.ikon});
+  const _DiagnosticChip(
+      {required this.label, required this.ok, required this.ikon});
 
   @override
   Widget build(BuildContext context) {
@@ -854,7 +888,6 @@ class _DiagnosticChip extends StatelessWidget {
   }
 }
 
-// ── Visualizer posisi robot (progress bar horizontal) ─────────
 class _PosisiVisualizer extends StatelessWidget {
   final double posisiPct;
   final double posisiCm;
@@ -869,7 +902,7 @@ class _PosisiVisualizer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isWarning = limitMaju || limitMundur;
+    final isWarning  = limitMaju || limitMundur;
     final trackColor = isWarning ? _cKuning : _cHijau;
 
     return Column(
@@ -882,34 +915,31 @@ class _PosisiVisualizer extends StatelessWidget {
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
                     color: Color(0xFF64748B))),
             Text('${posisiCm.toStringAsFixed(1)} cm',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                style: const TextStyle(fontSize: 12,
+                    fontWeight: FontWeight.w700,
                     color: Color(0xFF0F172A))),
           ],
         ),
         const SizedBox(height: 8),
-        Stack(
-          children: [
-            // Track background
-            Container(
+        Stack(children: [
+          Container(
+            height: 10,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(5),
+            ),
+          ),
+          FractionallySizedBox(
+            widthFactor: posisiPct,
+            child: Container(
               height: 10,
               decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
+                color: trackColor,
                 borderRadius: BorderRadius.circular(5),
               ),
             ),
-            // Filled portion
-            FractionallySizedBox(
-              widthFactor: posisiPct,
-              child: Container(
-                height: 10,
-                decoration: BoxDecoration(
-                  color: trackColor,
-                  borderRadius: BorderRadius.circular(5),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ]),
         const SizedBox(height: 4),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -921,13 +951,15 @@ class _PosisiVisualizer extends StatelessWidget {
               Text('Home', style: TextStyle(
                   fontSize: 10,
                   color: limitMundur ? _cKuning : _cAbu,
-                  fontWeight: limitMundur ? FontWeight.w700 : FontWeight.normal)),
+                  fontWeight: limitMundur
+                      ? FontWeight.w700 : FontWeight.normal)),
             ]),
             Row(children: [
               Text('Batas Akhir', style: TextStyle(
                   fontSize: 10,
                   color: limitMaju ? _cKuning : _cAbu,
-                  fontWeight: limitMaju ? FontWeight.w700 : FontWeight.normal)),
+                  fontWeight: limitMaju
+                      ? FontWeight.w700 : FontWeight.normal)),
               const SizedBox(width: 3),
               Icon(Icons.stop_rounded, size: 12,
                   color: limitMaju ? _cKuning : _cAbu),
@@ -939,7 +971,6 @@ class _PosisiVisualizer extends StatelessWidget {
   }
 }
 
-// ── Skeleton saat loading ────────────────────────────────────
 class _CardSkeleton extends StatelessWidget {
   final String judul;
   const _CardSkeleton({required this.judul});
@@ -950,37 +981,48 @@ class _CardSkeleton extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(children: [
-          Container(width: 36, height: 36,
+          Container(
+              width: 36, height: 36,
               decoration: BoxDecoration(
                   color: const Color(0xFFE2E8F0),
                   borderRadius: BorderRadius.circular(10))),
           const SizedBox(width: 10),
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Container(width: 80, height: 10,
-                decoration: BoxDecoration(color: const Color(0xFFE2E8F0),
+            Container(
+                width: 80, height: 10,
+                decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
                     borderRadius: BorderRadius.circular(4))),
             const SizedBox(height: 6),
-            Container(width: 130, height: 13,
-                decoration: BoxDecoration(color: const Color(0xFFF1F5F9),
+            Container(
+                width: 130, height: 13,
+                decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(4))),
           ]),
         ]),
         const SizedBox(height: 16),
-        Container(height: 12, width: double.infinity,
-            decoration: BoxDecoration(color: const Color(0xFFF1F5F9),
+        Container(
+            height: 12, width: double.infinity,
+            decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(4))),
         const SizedBox(height: 8),
-        Container(height: 12, width: 200,
-            decoration: BoxDecoration(color: const Color(0xFFF1F5F9),
+        Container(
+            height: 12, width: 200,
+            decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(4))),
         const SizedBox(height: 16),
         Row(children: [
           for (int i = 0; i < 3; i++) ...[
-            Expanded(child: Container(height: 40,
-                decoration: BoxDecoration(color: const Color(0xFFF1F5F9),
+            Expanded(child: Container(
+                height: 40,
+                decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(10)))),
             if (i < 2) const SizedBox(width: 8),
-          ]
+          ],
         ]),
       ],
     ),
