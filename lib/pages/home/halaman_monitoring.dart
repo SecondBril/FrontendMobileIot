@@ -93,12 +93,12 @@ class _HalamanMonitoringState extends State<HalamanMonitoring> {
               ),
             )
           else ...[
-            _buildSensorValueCard(
-              title: 'Berat Pakan (Load Cell)',
-              statusText: beratPakanKg > 0.5 ? 'Normal' : 'Menipis',
-              valueText: beratPakanKg.toStringAsFixed(2), 
-              unitText: 'kg',
-            ),
+            // _buildSensorValueCard(
+            //   title: 'Berat Pakan (Load Cell)',
+            //   statusText: beratPakanKg > 0.5 ? 'Normal' : 'Menipis',
+            //   valueText: beratPakanKg.toStringAsFixed(2), 
+            //   unitText: 'kg',
+            // ),
             const SizedBox(height: 10),
             _buildLevelWithBarCard(
               title: 'Level Pakan (Ultrasonik)',

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../service/jadwal_api.dart';
 
 class HalamanFeedControl extends StatefulWidget {
@@ -17,9 +18,6 @@ class _HalamanFeedControlState extends State<HalamanFeedControl> {
   bool _enableAutoFeeding = true;
   bool _isLoading = true;
   List<dynamic> _feedingSlots = [];
-
-  // Porsi gram selalu 500g — tidak ditampilkan ke user
-  static const int _defaultPorsi = 500;
 
   @override
   void initState() {
@@ -52,18 +50,22 @@ class _HalamanFeedControlState extends State<HalamanFeedControl> {
   }
 
   // ================================================================
-  //  DIALOG TAMBAH / EDIT — hanya pilih waktu, porsi default 500g
+  //  DIALOG TAMBAH / EDIT — satu fungsi, dua mode
   //  editSlot = null → mode Tambah
-  //  editSlot = {...} → mode Edit (pre-filled waktu)
+  //  editSlot = {...} → mode Edit (pre-filled)
   // ================================================================
   Future<void> _showSlotDialog({Map<String, dynamic>? editSlot}) async {
     final isEdit = editSlot != null;
 
+    // Nilai awal: pre-fill saat edit, default saat tambah
     TimeOfDay selectedTime = isEdit
         ? _parseWaktu(editSlot!['waktu'] as String)
         : const TimeOfDay(hour: 12, minute: 0);
+    final portionController = TextEditingController(
+      text: isEdit ? '${editSlot!['porsi_gram']}' : '500',
+    );
 
-    final result = await showDialog<String>(
+    final result = await showDialog<Map<String, String>>(
       context: context,
       builder: (context) {
         return StatefulBuilder(
@@ -115,6 +117,26 @@ class _HalamanFeedControlState extends State<HalamanFeedControl> {
                       ),
                     ),
                   ),
+
+                  const SizedBox(height: 16),
+
+                  // ── Porsi ─────────────────────────────────────────
+                  const Text('Porsi (gram)',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: portionController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: InputDecoration(
+                      hintText: '10 - 9999',
+                      suffixText: 'g',
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                    ),
+                  ),
                 ],
               ),
               actions: [
@@ -125,10 +147,20 @@ class _HalamanFeedControlState extends State<HalamanFeedControl> {
                 ),
                 ElevatedButton(
                   onPressed: () {
+                    final portion = portionController.text.trim();
+                    if (portion.isEmpty) return;
+                    final p = int.tryParse(portion) ?? 0;
+                    if (p < 10 || p > 9999) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Porsi harus antara 10–9999 gram')),
+                      );
+                      return;
+                    }
                     final timeStr =
                         '${selectedTime.hour.toString().padLeft(2, '0')}:'
                         '${selectedTime.minute.toString().padLeft(2, '0')}';
-                    Navigator.of(context).pop(timeStr);
+                    Navigator.of(context)
+                        .pop({'time': timeStr, 'portion': portion});
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF16A34A),
@@ -145,10 +177,11 @@ class _HalamanFeedControlState extends State<HalamanFeedControl> {
       },
     );
 
+    portionController.dispose();
     if (result == null || !mounted) return;
 
-    final waktu = result;
-    const porsi = _defaultPorsi;
+    final waktu = result['time']!;
+    final porsi = int.parse(result['portion']!);
 
     setState(() => _isLoading = true);
 
@@ -310,7 +343,7 @@ class _HalamanFeedControlState extends State<HalamanFeedControl> {
 
           // ── Daftar jadwal ───────────────────────────────────────
           ..._feedingSlots.asMap().entries.map((entry) {
-            final slot     = entry.value;
+            final slot    = entry.value;
             final jadwalId = slot['id'] as int;
             final enabled  = slot['is_active'] as bool;
 
@@ -332,17 +365,32 @@ class _HalamanFeedControlState extends State<HalamanFeedControl> {
                 ),
                 child: Row(
                   children: [
-                    // Waktu saja — porsi tidak ditampilkan
+                    // Waktu + porsi
                     Expanded(
-                      child: Text(
-                        '${slot['waktu']}',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: enabled
-                              ? const Color(0xFF0F172A)
-                              : Colors.grey,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${slot['waktu']}',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: enabled
+                                  ? const Color(0xFF0F172A)
+                                  : Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${slot['porsi_gram']} gram',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: enabled
+                                  ? Colors.black54
+                                  : Colors.grey[400],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
 
@@ -370,7 +418,8 @@ class _HalamanFeedControlState extends State<HalamanFeedControl> {
                                 borderRadius: BorderRadius.circular(14)),
                             title: const Text('Hapus Jadwal?'),
                             content: Text(
-                              'Jadwal pukul ${slot['waktu']} akan dihapus permanen.',
+                              'Jadwal pukul ${slot['waktu']} (${slot['porsi_gram']}g) '
+                              'akan dihapus permanen.',
                             ),
                             actions: [
                               TextButton(

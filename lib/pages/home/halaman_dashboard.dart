@@ -33,10 +33,10 @@ class HalamanDashboard extends StatelessWidget {
           const SizedBox(height: 16),
           _buildSystemStatusCard(),
           const SizedBox(height: 12),
-          _buildStorageRow(
-            levelPakanPersen: sensor.levelPakanPersen,
-            levelAirPersen: sensor.levelAirPersen,
-          ),
+           _buildStorageRow(
+             levelPakanPersen: sensor.levelPakanPersen,
+             levelAirPersen: sensor.levelAirPersen,
+           ),
           const SizedBox(height: 12),
           _buildAiSummaryCard(context),
           const SizedBox(height: 12),
